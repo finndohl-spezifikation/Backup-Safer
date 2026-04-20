@@ -72,11 +72,14 @@ export async function doBackup(interaction, guild, selectedChannelIds) {
   await interaction.editReply({ content: 'â³ Backup wird erstellt...', components: [] });
 
   try {
-    // Rollen
+    // Rollen (inkl. @everyone)
+    const everyoneRole = guild.roles.everyone;
+    const everyonePermissions = everyoneRole.permissions.bitfield.toString();
+
     const roles = [];
     for (const r of guild.roles.cache
       .filter(r2 => !r2.managed && r2.id !== guild.id)
-      .sort((a, b) => b.position - a.position)
+      .sort((a, b) => a.position - b.position)
       .values()
     ) {
       roles.push({
@@ -167,10 +170,11 @@ export async function doBackup(interaction, guild, selectedChannelIds) {
     const { saveBackup } = await import('./storage.js');
     saveBackup(backupId, {
       backupId,
-      serverName: guild.name,
-      serverIcon: iconURL,
-      createdAt:  new Date().toISOString(),
-      createdBy:  interaction.user.tag,
+      serverName:          guild.name,
+      serverIcon:          iconURL,
+      createdAt:           new Date().toISOString(),
+      createdBy:           interaction.user.tag,
+      everyonePermissions,
       roleNameMap,
       roles,
       channels,
