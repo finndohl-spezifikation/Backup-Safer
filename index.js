@@ -46,7 +46,7 @@ client.on('interactionCreate', async (interaction) => {
     }
   } catch (err) {
     console.error('[FEHLER] Interaction:', err);
-    const msg = { content: 'âŒ Ein Fehler ist aufgetreten.', ephemeral: true };
+    const msg = { content: '\u{274C} Ein Fehler ist aufgetreten.', ephemeral: true };
     if (interaction.replied || interaction.deferred) await interaction.followUp(msg).catch(() => {});
     else await interaction.reply(msg).catch(() => {});
   }
