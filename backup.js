@@ -9,7 +9,7 @@ import {
 
 export const backupCommand = new SlashCommandBuilder()
   .setName('backup')
-  .setDescription('Erstellt ein vollstÃ¤ndiges Backup dieses Servers')
+  .setDescription('Erstellt ein vollst\u{E4}ndiges Backup dieses Servers')
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
   .toJSON();
 
@@ -18,7 +18,7 @@ export const pendingBackupGuilds = new Map();
 
 export async function handleBackup(interaction) {
   if (!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)) {
-    return interaction.reply({ content: 'âŒ Du brauchst Admin-Rechte.', ephemeral: true });
+    return interaction.reply({ content: '\u{274C} Du brauchst Admin-Rechte.', ephemeral: true });
   }
 
   await interaction.deferReply({ ephemeral: true });
@@ -35,8 +35,8 @@ export async function handleBackup(interaction) {
 
   const options = [
     new StringSelectMenuOptionBuilder()
-      .setLabel('Alle KanÃ¤le')
-      .setDescription('Nachrichten aus ALLEN TextkanÃ¤len sichern')
+      .setLabel('Alle Kan\u{E4}le')
+      .setDescription('Nachrichten aus ALLEN Textkan\u{E4}len sichern')
       .setValue('__ALL__'),
     new StringSelectMenuOptionBuilder()
       .setLabel('Keine Nachrichten')
@@ -55,7 +55,7 @@ export async function handleBackup(interaction) {
 
   const select = new StringSelectMenuBuilder()
     .setCustomId('backup_channel_select')
-    .setPlaceholder('KanÃ¤le auswÃ¤hlen...')
+    .setPlaceholder('Kan\u{E4}le ausw\u{E4}hlen...')
     .setMinValues(1)
     .setMaxValues(Math.min(options.length, 25))
     .addOptions(options);
@@ -63,13 +63,13 @@ export async function handleBackup(interaction) {
   pendingBackupGuilds.set(interaction.user.id, guild);
 
   await interaction.editReply({
-    content: 'â³ Aus welchen KanÃ¤len sollen Nachrichten gesichert werden?\nMehrere KanÃ¤le mÃ¶glich.',
+    content: '\u{23F3} Aus welchen Kan\u{E4}len sollen Nachrichten gesichert werden?\nMehrere Kan\u{E4}le m\u{F6}glich.',
     components: [new ActionRowBuilder().addComponents(select)],
   });
 }
 
 export async function doBackup(interaction, guild, selectedChannelIds) {
-  await interaction.editReply({ content: 'â³ Backup wird erstellt...', components: [] });
+  await interaction.editReply({ content: '\u{23F3} Backup wird erstellt...', components: [] });
 
   try {
     // Rollen (inkl. @everyone)
@@ -93,11 +93,11 @@ export async function doBackup(interaction, guild, selectedChannelIds) {
       });
     }
 
-    // Rollen-ID -> Name Map (fÃ¼r Mention-Ersatz)
+    // Rollen-ID -> Name Map (f\u{FC}r Mention-Ersatz)
     const roleNameMap = {};
     guild.roles.cache.forEach(r => { roleNameMap[r.id] = r.name; });
 
-    // KanÃ¤le
+    // Kan\u{E4}le
     const channels = [];
     for (const channel of guild.channels.cache
       .sort((a, b) => a.position - b.position)
@@ -182,14 +182,14 @@ export async function doBackup(interaction, guild, selectedChannelIds) {
 
     const msgCount = channels.reduce((s, c) => s + c.messages.length, 0);
     await interaction.editReply(
-      'âœ… **Backup erfolgreich erstellt!**\n' +
-      'ðŸ†” ID: ' + backupId + '\n' +
-      'ðŸ“ KanÃ¤le: **' + channels.length + '**\n' +
-      'ðŸŽ­ Rollen: **' + roles.length + '**\n' +
-      'ðŸ’¬ Nachrichten: **' + msgCount + '**'
+      '\u{2705} **Backup erfolgreich erstellt!**\n' +
+      '\u{1F194} ID: ' + backupId + '\n' +
+      '\u{1F4C1} Kan\u{E4}le: **' + channels.length + '**\n' +
+      '\u{1F3AD} Rollen: **' + roles.length + '**\n' +
+      '\u{1F4AC} Nachrichten: **' + msgCount + '**'
     );
   } catch (err) {
     console.error('[BACKUP FEHLER]', err);
-    await interaction.editReply('âŒ Backup fehlgeschlagen. PrÃ¼fe die Bot-Berechtigungen.');
+    await interaction.editReply('\u{274C} Backup fehlgeschlagen. Pr\u{FC}fe die Bot-Berechtigungen.');
   }
 }
