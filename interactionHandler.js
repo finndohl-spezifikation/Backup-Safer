@@ -146,7 +146,7 @@ export async function handleButton(interaction) {
 
     await interaction.editReply('\u{23F3} Erstelle Rollen...');
     const roleNameToId = new Map();
-    // Aufsteigend nach Position erstellen (niedrigste zuerst)
+    // Aufsteigend nach Original-Position sortieren (niedrigste zuerst = schw\u{E4}chste zuerst)
     const sortedRoles = [...backup.roles].sort((a, b) => a.position - b.position);
     for (const r of sortedRoles) {
       try {
@@ -158,21 +158,25 @@ export async function handleButton(interaction) {
           permissions: BigInt(r.permissions),
         });
         roleNameToId.set(r.name, newRole.id);
-      } catch { /* \u{FC}berspringen */ }
+      } catch (e) { console.error('[RESTORE] Rolle erstellen:', r.name, e.message); }
     }
 
-    // Rollen-Reihenfolge exakt erzwingen
+    // Rollen-Reihenfolge erzwingen: sequenzielle Positionen 1,2,3...
+    // (Discord erwartet l\u{FC}ckenlose Zahlen; Original-Werte k\u{F6}nnen L\u{FC}cken haben)
     await interaction.editReply('\u{23F3} Setze Rollen-Reihenfolge...');
-    const positionUpdates = [];
-    for (const r of sortedRoles) {
-      const newId = roleNameToId.get(r.name);
-      if (newId) positionUpdates.push({ role: newId, position: r.position });
-    }
+    const positionUpdates = sortedRoles
+      .map((r, i) => {
+        const newId = roleNameToId.get(r.name);
+        return newId ? { role: newId, position: i + 1 } : null;
+      })
+      .filter(Boolean);
     if (positionUpdates.length > 0) {
-      await guild.roles.setPositions(positionUpdates).catch(e => console.error('[RESTORE] setPositions:', e.message));
+      await guild.roles.setPositions(positionUpdates)
+        .catch(e => console.error('[RESTORE] setPositions:', e.message));
     }
 
     await interaction.editReply('\u{23F3} Erstelle Kan\u{E4}le...');
+    // Zwei Maps: Name -> neue ID (Fallback), Original-ID -> neue ID (bevorzugt)
     const categoryNameToId = new Map();
     const categoryIdToNewId = new Map();
 
@@ -187,7 +191,7 @@ export async function handleButton(interaction) {
         });
         categoryNameToId.set(cat.name, newCat.id);
         categoryIdToNewId.set(cat.id, newCat.id);
-      } catch { /* \u{FC}berspringen */ }
+      } catch (e) { console.error('[RESTORE] Kategorie erstellen:', cat.name, e.message); }
     }
 
     const others = backup.channels.filter(c => c.type !== ChannelType.GuildCategory);
@@ -201,7 +205,12 @@ export async function handleButton(interaction) {
           nsfw:     ch.nsfw ?? false,
           permissionOverwrites: resolveOverwrites(ch.overwrites, guild, roleNameToId, backup.roles),
         };
-        if (ch.parentName && categoryNameToId.has(ch.parentName)) opts.parent = categoryNameToId.get(ch.parentName);
+        // Kategorie bevorzugt per Original-ID aufl\u{F6}sen, Fallback: Name
+        if (ch.parentId && categoryIdToNewId.has(ch.parentId)) {
+          opts.parent = categoryIdToNewId.get(ch.parentId);
+        } else if (ch.parentName && categoryNameToId.has(ch.parentName)) {
+          opts.parent = categoryNameToId.get(ch.parentName);
+        }
         if (ch.bitrate)           opts.bitrate           = ch.bitrate;
         if (ch.userLimit)         opts.userLimit          = ch.userLimit;
         if (ch.rateLimitPerUser)  opts.rateLimitPerUser   = ch.rateLimitPerUser;
@@ -218,7 +227,7 @@ export async function handleButton(interaction) {
             }).catch(() => {});
           }
         }
-      } catch { /* \u{FC}berspringen */ }
+      } catch (e) { console.error('[RESTORE] Kanal erstellen:', ch.name, e.message); }
     }
 
     pendingRestores.delete(interaction.user.id);
@@ -237,26 +246,33 @@ export async function handleButton(interaction) {
 }
 
 function resolveOverwrites(overwrites, guild, roleNameToId, backupRoles) {
-  return overwrites.map(o => {
+  const result = [];
+  for (const o of overwrites) {
     let resolvedId = o.id;
+
     if (o.type === 0) {
+      // Rollen-Overwrite
       if (o.id === guild.id) {
+        // @everyone \u{2013} immer gueltig
         resolvedId = guild.id;
       } else {
         const backupRole = backupRoles.find(r => r.id === o.id);
-        if (backupRole) {
-          const newId = roleNameToId.get(backupRole.name);
-          if (newId) resolvedId = newId;
-        }
+        if (!backupRole) continue; // Rolle nicht im Backup -> ueberspringen
+        const newId = roleNameToId.get(backupRole.name);
+        if (!newId) continue;      // Rolle nicht erstellt -> ueberspringen
+        resolvedId = newId;
       }
     }
-    return {
+    // type === 1 (Member-Overwrite): User-ID bleibt, Discord ignoriert fehlende Member
+
+    result.push({
       id:    resolvedId,
       type:  o.type,
       allow: BigInt(o.allow),
       deny:  BigInt(o.deny),
-    };
-  });
+    });
+  }
+  return result;
 }
 
 function resolveRoleMentions(content, roleNameToId) {
@@ -266,4 +282,4 @@ function resolveRoleMentions(content, roleNameToId) {
     result = result.split('@' + name).join('<@&' + id + '>');
   }
   return result;
-}
+      }
