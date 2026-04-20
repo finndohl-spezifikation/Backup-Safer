@@ -13,33 +13,30 @@ export const backupCommand = new SlashCommandBuilder()
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
   .toJSON();
 
-// Zwischenspeicher: userId -> guild (wird benoetigt fuer spaetere Schritte)
+// Zwischenspeicher: userId -> guild
 export const pendingBackupGuilds = new Map();
 
 export async function handleBackup(interaction) {
   if (!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)) {
-    return interaction.reply({ content: 'Du brauchst Admin-Rechte.', ephemeral: true });
+    return interaction.reply({ content: '\u274C Du brauchst Admin-Rechte.', ephemeral: true });
   }
 
   await interaction.deferReply({ ephemeral: true });
   const guild = interaction.guild;
 
-  // Alle Text-Kanaele sammeln (keine Kategorien, keine Voice)
   const textChannels = guild.channels.cache.filter(
     c => c.isTextBased() && !c.isThread() && c.type !== ChannelType.GuildCategory
   );
 
   if (textChannels.size === 0) {
-    // Keine TextkanÃ¤le -> Backup direkt ohne Nachrichten
     await doBackup(interaction, guild, new Set());
     return;
   }
 
-  // Optionen fÃ¼r Select-Menu (max 25)
   const options = [
     new StringSelectMenuOptionBuilder()
       .setLabel('Alle Kanaele')
-      .setDescription('Nachrichten aus ALLEN TextkanÃ¤len sichern')
+      .setDescription('Nachrichten aus ALLEN Textkanaelen sichern')
       .setValue('__ALL__'),
     new StringSelectMenuOptionBuilder()
       .setLabel('Keine Nachrichten')
@@ -66,18 +63,16 @@ export async function handleBackup(interaction) {
   pendingBackupGuilds.set(interaction.user.id, guild);
 
   await interaction.editReply({
-    content:
-      'Aus welchen Kanaelen sollen Nachrichten gesichert werden?\n' +
-      'Du kannst mehrere auswaehlen. Dann auf Senden klicken.',
+    content: '\u23F3 Aus welchen Kanaelen sollen Nachrichten gesichert werden?\nMehrere Kanaele moeglich.',
     components: [new ActionRowBuilder().addComponents(select)],
   });
 }
 
 export async function doBackup(interaction, guild, selectedChannelIds) {
-  await interaction.editReply({ content: 'Backup wird erstellt...', components: [] });
+  await interaction.editReply({ content: '\u23F3 Backup wird erstellt...', components: [] });
 
   try {
-    // â”€â”€ Rollen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Rollen
     const roles = [];
     for (const r of guild.roles.cache
       .filter(r2 => !r2.managed && r2.id !== guild.id)
@@ -85,35 +80,32 @@ export async function doBackup(interaction, guild, selectedChannelIds) {
       .values()
     ) {
       roles.push({
-        id:          r.id,
-        name:        r.name,
-        color:       r.color,
-        hoist:       r.hoist,
-        mentionable: r.mentionable,
-        permissions: r.permissions.bitfield.toString(),
-        position:    r.position,
-        icon:        r.icon ?? null,
-        unicodeEmoji: r.unicodeEmoji ?? null,
+        id:           r.id,
+        name:         r.name,
+        color:        r.color,
+        hoist:        r.hoist,
+        mentionable:  r.mentionable,
+        permissions:  r.permissions.bitfield.toString(),
+        position:     r.position,
       });
     }
 
-    // Rollen-ID -> Name Map fuer Nachrichten-Mentions
+    // Rollen-ID -> Name Map (fuer Mention-Ersatz)
     const roleNameMap = {};
     guild.roles.cache.forEach(r => { roleNameMap[r.id] = r.name; });
 
-    // â”€â”€ Kanaele â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Kanaele
     const channels = [];
     for (const channel of guild.channels.cache
       .sort((a, b) => a.position - b.position)
       .values()
     ) {
-      // Alle Permission-Overwrites exakt kopieren
       const overwrites = [];
       if (channel.permissionOverwrites?.cache) {
         for (const o of channel.permissionOverwrites.cache.values()) {
           overwrites.push({
             id:    o.id,
-            type:  o.type,   // 0 = Rolle, 1 = Mitglied
+            type:  o.type,
             allow: o.allow.bitfield.toString(),
             deny:  o.deny.bitfield.toString(),
           });
@@ -121,22 +113,21 @@ export async function doBackup(interaction, guild, selectedChannelIds) {
       }
 
       const entry = {
-        id:           channel.id,
-        name:         channel.name,
-        type:         channel.type,
-        position:     channel.position,
-        parentId:     channel.parentId ?? null,
-        parentName:   channel.parent?.name ?? null,
-        topic:        channel.topic ?? null,
-        nsfw:         channel.nsfw ?? false,
-        bitrate:      channel.bitrate ?? null,
-        userLimit:    channel.userLimit ?? null,
+        id:               channel.id,
+        name:             channel.name,
+        type:             channel.type,
+        position:         channel.position,
+        parentId:         channel.parentId ?? null,
+        parentName:       channel.parent?.name ?? null,
+        topic:            channel.topic ?? null,
+        nsfw:             channel.nsfw ?? false,
+        bitrate:          channel.bitrate ?? null,
+        userLimit:        channel.userLimit ?? null,
         rateLimitPerUser: channel.rateLimitPerUser ?? null,
         overwrites,
         messages: [],
       };
 
-      // Nachrichten nur aus ausgewaehlten Kanaelen
       const backupMessages =
         selectedChannelIds.has('__ALL__') ||
         selectedChannelIds.has(channel.id);
@@ -151,8 +142,7 @@ export async function doBackup(interaction, guild, selectedChannelIds) {
               ...(lastId ? { before: lastId } : {}),
             });
             for (const m of fetched.values()) {
-              // Rollen-Mentions im Inhalt durch Namen ersetzen (fuer spaetere Wiederherstellung)
-              const contentFixed = m.content.replace(/<@&(d+)>/g, (match, id) => {
+              const contentFixed = m.content.replace(/<@&(\d+)>/g, (match, id) => {
                 const name = roleNameMap[id];
                 return name ? '@' + name : match;
               });
@@ -171,9 +161,11 @@ export async function doBackup(interaction, guild, selectedChannelIds) {
       channels.push(entry);
     }
 
-    const iconURL = guild.iconURL({ size: 4096, extension: 'png' }) ?? null;
+    const iconURL  = guild.iconURL({ size: 4096, extension: 'png' }) ?? null;
     const backupId = guild.id + '-' + Date.now();
-    const backup = {
+
+    const { saveBackup } = await import('./storage.js');
+    saveBackup(backupId, {
       backupId,
       serverName: guild.name,
       serverIcon: iconURL,
@@ -182,21 +174,18 @@ export async function doBackup(interaction, guild, selectedChannelIds) {
       roleNameMap,
       roles,
       channels,
-    };
-
-    const { saveBackup } = await import('./storage.js');
-    saveBackup(backupId, backup);
+    });
 
     const msgCount = channels.reduce((s, c) => s + c.messages.length, 0);
     await interaction.editReply(
-      'Backup erfolgreich erstellt!\n' +
-      'ID: ' + backupId + '\n' +
-      'Kanaele: ' + channels.length + '\n' +
-      'Rollen: ' + roles.length + '\n' +
-      'Nachrichten: ' + msgCount
+      '\u2705 **Backup erfolgreich erstellt!**\n' +
+      '\uD83C\uDD94 ID: ' + backupId + '\n' +
+      '\uD83D\uDCC1 Kanaele: **' + channels.length + '**\n' +
+      '\uD83C\uDFAD Rollen: **' + roles.length + '**\n' +
+      '\uD83D\uDCAC Nachrichten: **' + msgCount + '**'
     );
   } catch (err) {
     console.error('[BACKUP FEHLER]', err);
-    await interaction.editReply('Backup fehlgeschlagen. Pruefe die Bot-Berechtigungen.');
+    await interaction.editReply('\u274C Backup fehlgeschlagen. Pruefe die Bot-Berechtigungen.');
   }
 }
