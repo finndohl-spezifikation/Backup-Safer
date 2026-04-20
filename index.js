@@ -1,55 +1,285 @@
-import { Client, GatewayIntentBits, Partials, REST, Routes, Collection } from 'discord.js';
-import { backupCommand, handleBackup } from './backup.js';
-import { listCommand, handleList } from './list.js';
-import { handleSelectMenu, handleButton } from './interactionHandler.js';
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  PermissionFlagsBits,
+  ChannelType,
+} from 'discord.js';
+import { getBackup, deleteBackup } from './storage.js';
+import { pendingBackupGuilds, doBackup } from './backup.js';
 
-const TOKEN     = process.env.DISCORD_TOKEN;
-const CLIENT_ID = process.env.CLIENT_ID;
+const pendingRestores = new Map();
+const pendingDeletes  = new Map();
 
-if (!TOKEN)     { console.error('[FEHLER] DISCORD_TOKEN fehlt!'); process.exit(1); }
-if (!CLIENT_ID) { console.error('[FEHLER] CLIENT_ID fehlt!');     process.exit(1); }
+export async function handleSelectMenu(interaction) {
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers,
-  ],
-  partials: [Partials.Channel, Partials.Message],
-});
-
-client.commands = new Collection();
-client.commands.set('backup', { execute: handleBackup });
-client.commands.set('list',   { execute: handleList });
-
-client.once('ready', async () => {
-  console.log('[READY] Eingeloggt als ' + client.user.tag);
-  const rest = new REST({ version: '10' }).setToken(TOKEN);
-  try {
-    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: [backupCommand, listCommand] });
-    console.log('[OK] Slash-Befehle registriert!');
-  } catch (err) {
-    console.error('[FEHLER] Befehle:', err);
-  }
-});
-
-client.on('interactionCreate', async (interaction) => {
-  try {
-    if (interaction.isChatInputCommand()) {
-      const cmd = client.commands.get(interaction.commandName);
-      if (cmd) await cmd.execute(interaction);
-    } else if (interaction.isStringSelectMenu()) {
-      await handleSelectMenu(interaction);
-    } else if (interaction.isButton()) {
-      await handleButton(interaction);
+  // Kanalauswahl beim Backup
+  if (interaction.customId === 'backup_channel_select') {
+    const guild = pendingBackupGuilds.get(interaction.user.id);
+    if (!guild) {
+      return interaction.update({ content: 'Sitzung abgelaufen. Bitte /backup erneut ausf\u{FC}hren.', components: [] });
     }
-  } catch (err) {
-    console.error('[FEHLER] Interaction:', err);
-    const msg = { content: '\u{274C} Ein Fehler ist aufgetreten.', ephemeral: true };
-    if (interaction.replied || interaction.deferred) await interaction.followUp(msg).catch(() => {});
-    else await interaction.reply(msg).catch(() => {});
+    const selected = new Set(interaction.values);
+    pendingBackupGuilds.delete(interaction.user.id);
+    await interaction.update({ content: '\u{23F3} Backup l\u{E4}uft...', components: [] });
+    await doBackup(interaction, guild, selected);
+    return;
   }
-});
 
-client.login(TOKEN);
+  // Backup-Auswahl beim Wiederherstellen
+  if (interaction.customId === 'backup_select') {
+    const backupId = interaction.values[0];
+    const backup   = getBackup(backupId);
+    if (!backup) return interaction.update({ content: '\u{274C} Backup nicht gefunden.', components: [] });
+
+    pendingRestores.set(interaction.user.id, backupId);
+    pendingDeletes.set(interaction.user.id, backupId);
+
+    const restore = new ButtonBuilder()
+      .setCustomId('restore_confirm')
+      .setLabel('Laden')
+      .setStyle(ButtonStyle.Danger);
+
+    const del = new ButtonBuilder()
+      .setCustomId('backup_delete')
+      .setLabel('L\u{F6}schen')
+      .setStyle(ButtonStyle.Secondary);
+
+    const cancel = new ButtonBuilder()
+      .setCustomId('restore_cancel')
+      .setLabel('Abbrechen')
+      .setStyle(ButtonStyle.Secondary);
+
+    await interaction.update({
+      content:
+        '\u{26A0}\u{FE0F} **Was m\u{F6}chtest du tun?**\n' +
+        'Backup: **' + (backup.serverName ?? backupId) + '**\n' +
+        'Erstellt: ' + (backup.createdAt ? new Date(backup.createdAt).toLocaleString('de-DE') : '?') + '\n' +
+        '\u{1F4C1} ' + backup.channels.length + ' Kan\u{E4}le  \u{1F3AD} ' + backup.roles.length + ' Rollen',
+      components: [new ActionRowBuilder().addComponents(restore, del, cancel)],
+    });
+    return;
+  }
+}
+
+export async function handleButton(interaction) {
+
+  // \u{2500}\u{2500} Abbrechen \u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}
+  if (interaction.customId === 'restore_cancel') {
+    pendingRestores.delete(interaction.user.id);
+    pendingDeletes.delete(interaction.user.id);
+    return interaction.update({ content: '\u{274C} Abgebrochen.', components: [] });
+  }
+
+  // \u{2500}\u{2500} Backup loeschen: Sicherheitsabfrage \u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}
+  if (interaction.customId === 'backup_delete') {
+    const backupId = pendingDeletes.get(interaction.user.id);
+    if (!backupId) return interaction.update({ content: '\u{274C} Kein Backup ausgew\u{E4}hlt.', components: [] });
+    const backup = getBackup(backupId);
+    const confirmDel = new ButtonBuilder()
+      .setCustomId('delete_confirm')
+      .setLabel('Ja, endg\u{FC}ltig l\u{F6}schen')
+      .setStyle(ButtonStyle.Danger);
+    const cancelDel = new ButtonBuilder()
+      .setCustomId('restore_cancel')
+      .setLabel('Abbrechen')
+      .setStyle(ButtonStyle.Secondary);
+    await interaction.update({
+      content:
+        '\u{26A0}\u{FE0F} **Backup wirklich l\u{F6}schen?**\n' +
+        'Backup: **' + (backup?.serverName ?? backupId) + '**\n' +
+        'Diese Aktion kann nicht r\u{FC}ckg\u{E4}ngig gemacht werden!',
+      components: [new ActionRowBuilder().addComponents(confirmDel, cancelDel)],
+    });
+    return;
+  }
+
+  // \u{2500}\u{2500} Backup loeschen: Bestaetigt \u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}
+  if (interaction.customId === 'delete_confirm') {
+    const backupId = pendingDeletes.get(interaction.user.id);
+    if (!backupId) return interaction.update({ content: '\u{274C} Kein Backup ausgew\u{E4}hlt.', components: [] });
+    pendingDeletes.delete(interaction.user.id);
+    pendingRestores.delete(interaction.user.id);
+    deleteBackup(backupId);
+    return interaction.update({ content: '\u{2705} Backup wurde gel\u{F6}scht.', components: [] });
+  }
+
+  if (interaction.customId !== 'restore_confirm') return;
+
+  if (!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)) {
+    return interaction.reply({ content: '\u{274C} Du brauchst Admin-Rechte.', ephemeral: true });
+  }
+
+  const backupId = pendingRestores.get(interaction.user.id);
+  if (!backupId) return interaction.reply({ content: '\u{274C} Kein Backup ausgew\u{E4}hlt.', ephemeral: true });
+
+  const backup = getBackup(backupId);
+  if (!backup) return interaction.reply({ content: '\u{274C} Backup nicht gefunden.', ephemeral: true });
+
+  await interaction.update({ content: '\u{23F3} Backup wird wiederhergestellt...', components: [] });
+
+  const guild = interaction.guild;
+  // Den Kanal der Interaktion NICHT sofort l\u{F6}schen \u{2013} sonst schlagen alle editReply fehl
+  const interactionChannelId = interaction.channelId;
+
+  try {
+    await guild.setName(backup.serverName).catch(() => {});
+    if (backup.serverIcon) await guild.setIcon(backup.serverIcon).catch(() => {});
+
+    await interaction.editReply('\u{23F3} L\u{F6}sche Kan\u{E4}le...');
+    for (const ch of guild.channels.cache.values()) {
+      if (ch.id === interactionChannelId) continue; // zuletzt l\u{F6}schen
+      await ch.delete().catch(() => {});
+    }
+
+    await interaction.editReply('\u{23F3} L\u{F6}sche Rollen...');
+    for (const role of guild.roles.cache.values()) {
+      if (!role.managed && role.id !== guild.id) {
+        await role.delete().catch(() => {});
+      }
+    }
+
+    // @everyone-Berechtigungen wiederherstellen
+    if (backup.everyonePermissions) {
+      await guild.roles.everyone.setPermissions(BigInt(backup.everyonePermissions)).catch(() => {});
+    }
+
+    await interaction.editReply('\u{23F3} Erstelle Rollen...');
+    const roleNameToId = new Map();
+    // Aufsteigend nach Original-Position sortieren (niedrigste zuerst = schw\u{E4}chste zuerst)
+    const sortedRoles = [...backup.roles].sort((a, b) => a.position - b.position);
+    for (const r of sortedRoles) {
+      try {
+        const newRole = await guild.roles.create({
+          name:        r.name,
+          color:       r.color,
+          hoist:       r.hoist,
+          mentionable: r.mentionable,
+          permissions: BigInt(r.permissions),
+        });
+        roleNameToId.set(r.name, newRole.id);
+      } catch (e) { console.error('[RESTORE] Rolle erstellen:', r.name, e.message); }
+    }
+
+    // Rollen-Reihenfolge erzwingen: sequenzielle Positionen 1,2,3...
+    // (Discord erwartet l\u{FC}ckenlose Zahlen; Original-Werte k\u{F6}nnen L\u{FC}cken haben)
+    await interaction.editReply('\u{23F3} Setze Rollen-Reihenfolge...');
+    const positionUpdates = sortedRoles
+      .map((r, i) => {
+        const newId = roleNameToId.get(r.name);
+        return newId ? { role: newId, position: i + 1 } : null;
+      })
+      .filter(Boolean);
+    if (positionUpdates.length > 0) {
+      await guild.roles.setPositions(positionUpdates)
+        .catch(e => console.error('[RESTORE] setPositions:', e.message));
+    }
+
+    await interaction.editReply('\u{23F3} Erstelle Kan\u{E4}le...');
+    // Zwei Maps: Name -> neue ID (Fallback), Original-ID -> neue ID (bevorzugt)
+    const categoryNameToId = new Map();
+    const categoryIdToNewId = new Map();
+
+    const categories = backup.channels.filter(c => c.type === ChannelType.GuildCategory);
+    for (const cat of categories.sort((a, b) => a.position - b.position)) {
+      try {
+        const newCat = await guild.channels.create({
+          name:     cat.name,
+          type:     ChannelType.GuildCategory,
+          position: cat.position,
+          permissionOverwrites: resolveOverwrites(cat.overwrites, guild, roleNameToId, backup.roles),
+        });
+        categoryNameToId.set(cat.name, newCat.id);
+        categoryIdToNewId.set(cat.id, newCat.id);
+      } catch (e) { console.error('[RESTORE] Kategorie erstellen:', cat.name, e.message); }
+    }
+
+    const others = backup.channels.filter(c => c.type !== ChannelType.GuildCategory);
+    for (const ch of others.sort((a, b) => a.position - b.position)) {
+      try {
+        const opts = {
+          name:     ch.name,
+          type:     ch.type,
+          position: ch.position,
+          topic:    ch.topic ?? undefined,
+          nsfw:     ch.nsfw ?? false,
+          permissionOverwrites: resolveOverwrites(ch.overwrites, guild, roleNameToId, backup.roles),
+        };
+        // Kategorie bevorzugt per Original-ID aufl\u{F6}sen, Fallback: Name
+        if (ch.parentId && categoryIdToNewId.has(ch.parentId)) {
+          opts.parent = categoryIdToNewId.get(ch.parentId);
+        } else if (ch.parentName && categoryNameToId.has(ch.parentName)) {
+          opts.parent = categoryNameToId.get(ch.parentName);
+        }
+        if (ch.bitrate)           opts.bitrate           = ch.bitrate;
+        if (ch.userLimit)         opts.userLimit          = ch.userLimit;
+        if (ch.rateLimitPerUser)  opts.rateLimitPerUser   = ch.rateLimitPerUser;
+
+        const newCh = await guild.channels.create(opts);
+
+        if (ch.messages?.length > 0 && newCh.isTextBased()) {
+          const msgs = [...ch.messages].reverse();
+          for (const msg of msgs.slice(0, 100)) {
+            if (!msg.content && !msg.attachments?.length) continue;
+            const content = resolveRoleMentions(msg.content, roleNameToId);
+            await newCh.send({
+              content: ('[' + msg.author + '] ' + content).slice(0, 2000),
+            }).catch(() => {});
+          }
+        }
+      } catch (e) { console.error('[RESTORE] Kanal erstellen:', ch.name, e.message); }
+    }
+
+    pendingRestores.delete(interaction.user.id);
+    await interaction.editReply(
+      '\u{2705} **Backup erfolgreich wiederhergestellt!**\n' +
+      '\u{1F3F7}\u{FE0F} Server: **' + backup.serverName + '**\n' +
+      '\u{1F4C1} Kan\u{E4}le: **' + backup.channels.length + '**\n' +
+      '\u{1F3AD} Rollen: **' + backup.roles.length + '**'
+    );
+    // Jetzt den Interaktions-Kanal l\u{F6}schen (er war nicht im Backup)
+    guild.channels.cache.get(interactionChannelId)?.delete().catch(() => {});
+  } catch (err) {
+    console.error('[RESTORE FEHLER]', err);
+    await interaction.editReply('\u{274C} Wiederherstellung fehlgeschlagen. Pr\u{FC}fe die Bot-Berechtigungen.');
+  }
+}
+
+function resolveOverwrites(overwrites, guild, roleNameToId, backupRoles) {
+  const result = [];
+  for (const o of overwrites) {
+    let resolvedId = o.id;
+
+    if (o.type === 0) {
+      // Rollen-Overwrite
+      if (o.id === guild.id) {
+        // @everyone \u{2013} immer gueltig
+        resolvedId = guild.id;
+      } else {
+        const backupRole = backupRoles.find(r => r.id === o.id);
+        if (!backupRole) continue; // Rolle nicht im Backup -> ueberspringen
+        const newId = roleNameToId.get(backupRole.name);
+        if (!newId) continue;      // Rolle nicht erstellt -> ueberspringen
+        resolvedId = newId;
+      }
+    }
+    // type === 1 (Member-Overwrite): User-ID bleibt, Discord ignoriert fehlende Member
+
+    result.push({
+      id:    resolvedId,
+      type:  o.type,
+      allow: BigInt(o.allow),
+      deny:  BigInt(o.deny),
+    });
+  }
+  return result;
+}
+
+function resolveRoleMentions(content, roleNameToId) {
+  if (!content) return '';
+  let result = content;
+  for (const [name, id] of roleNameToId.entries()) {
+    result = result.split('@' + name).join('<@&' + id + '>');
+  }
+  return result;
+          }
