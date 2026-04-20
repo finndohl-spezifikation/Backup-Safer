@@ -5,10 +5,11 @@ import {
   PermissionFlagsBits,
   ChannelType,
 } from 'discord.js';
-import { getBackup } from './storage.js';
+import { getBackup, deleteBackup } from './storage.js';
 import { pendingBackupGuilds, doBackup } from './backup.js';
 
 const pendingRestores = new Map();
+const pendingDeletes  = new Map();
 
 export async function handleSelectMenu(interaction) {
 
@@ -32,11 +33,17 @@ export async function handleSelectMenu(interaction) {
     if (!backup) return interaction.update({ content: 'âŒ Backup nicht gefunden.', components: [] });
 
     pendingRestores.set(interaction.user.id, backupId);
+    pendingDeletes.set(interaction.user.id, backupId);
 
-    const confirm = new ButtonBuilder()
+    const restore = new ButtonBuilder()
       .setCustomId('restore_confirm')
-      .setLabel('Ja, wiederherstellen')
+      .setLabel('Laden')
       .setStyle(ButtonStyle.Danger);
+
+    const del = new ButtonBuilder()
+      .setCustomId('backup_delete')
+      .setLabel('LÃ¶schen')
+      .setStyle(ButtonStyle.Secondary);
 
     const cancel = new ButtonBuilder()
       .setCustomId('restore_cancel')
@@ -45,12 +52,11 @@ export async function handleSelectMenu(interaction) {
 
     await interaction.update({
       content:
-        'âš ï¸ **Bist du sicher?**\n' +
-        'Backup: **' + backup.serverName + '**\n' +
-        'Erstellt: ' + new Date(backup.createdAt).toLocaleString('de-DE') + '\n' +
-        'ðŸ“ ' + backup.channels.length + ' KanÃ¤le  ðŸŽ­ ' + backup.roles.length + ' Rollen\n\n' +
-        '**Alle bestehenden KanÃ¤le und Rollen werden gelÃ¶scht und neu erstellt!**',
-      components: [new ActionRowBuilder().addComponents(confirm, cancel)],
+        'âš ï¸ **Was mÃ¶chtest du tun?**\n' +
+        'Backup: **' + (backup.serverName ?? backupId) + '**\n' +
+        'Erstellt: ' + (backup.createdAt ? new Date(backup.createdAt).toLocaleString('de-DE') : '?') + '\n' +
+        'ðŸ“ ' + backup.channels.length + ' KanÃ¤le  ðŸŽ­ ' + backup.roles.length + ' Rollen',
+      components: [new ActionRowBuilder().addComponents(restore, del, cancel)],
     });
     return;
   }
@@ -58,9 +64,44 @@ export async function handleSelectMenu(interaction) {
 
 export async function handleButton(interaction) {
 
+  // â”€â”€ Abbrechen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (interaction.customId === 'restore_cancel') {
     pendingRestores.delete(interaction.user.id);
-    return interaction.update({ content: 'âŒ Wiederherstellung abgebrochen.', components: [] });
+    pendingDeletes.delete(interaction.user.id);
+    return interaction.update({ content: 'âŒ Abgebrochen.', components: [] });
+  }
+
+  // â”€â”€ Backup loeschen: Sicherheitsabfrage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  if (interaction.customId === 'backup_delete') {
+    const backupId = pendingDeletes.get(interaction.user.id);
+    if (!backupId) return interaction.update({ content: 'âŒ Kein Backup ausgewÃ¤hlt.', components: [] });
+    const backup = getBackup(backupId);
+    const confirmDel = new ButtonBuilder()
+      .setCustomId('delete_confirm')
+      .setLabel('Ja, endgÃ¼ltig lÃ¶schen')
+      .setStyle(ButtonStyle.Danger);
+    const cancelDel = new ButtonBuilder()
+      .setCustomId('restore_cancel')
+      .setLabel('Abbrechen')
+      .setStyle(ButtonStyle.Secondary);
+    await interaction.update({
+      content:
+        'âš ï¸ **Backup wirklich lÃ¶schen?**\n' +
+        'Backup: **' + (backup?.serverName ?? backupId) + '**\n' +
+        'Diese Aktion kann nicht rÃ¼ckgÃ¤ngig gemacht werden!',
+      components: [new ActionRowBuilder().addComponents(confirmDel, cancelDel)],
+    });
+    return;
+  }
+
+  // â”€â”€ Backup loeschen: Bestaetigt â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  if (interaction.customId === 'delete_confirm') {
+    const backupId = pendingDeletes.get(interaction.user.id);
+    if (!backupId) return interaction.update({ content: 'âŒ Kein Backup ausgewÃ¤hlt.', components: [] });
+    pendingDeletes.delete(interaction.user.id);
+    pendingRestores.delete(interaction.user.id);
+    deleteBackup(backupId);
+    return interaction.update({ content: 'âœ… Backup wurde gelÃ¶scht.', components: [] });
   }
 
   if (interaction.customId !== 'restore_confirm') return;
@@ -78,6 +119,8 @@ export async function handleButton(interaction) {
   await interaction.update({ content: 'â³ Backup wird wiederhergestellt...', components: [] });
 
   const guild = interaction.guild;
+  // Den Kanal der Interaktion NICHT sofort lÃ¶schen â€“ sonst schlagen alle editReply fehl
+  const interactionChannelId = interaction.channelId;
 
   try {
     await guild.setName(backup.serverName).catch(() => {});
@@ -85,6 +128,7 @@ export async function handleButton(interaction) {
 
     await interaction.editReply('â³ LÃ¶sche KanÃ¤le...');
     for (const ch of guild.channels.cache.values()) {
+      if (ch.id === interactionChannelId) continue; // zuletzt lÃ¶schen
       await ch.delete().catch(() => {});
     }
 
@@ -163,6 +207,8 @@ export async function handleButton(interaction) {
       'ðŸ“ KanÃ¤le: **' + backup.channels.length + '**\n' +
       'ðŸŽ­ Rollen: **' + backup.roles.length + '**'
     );
+    // Jetzt den Interaktions-Kanal lÃ¶schen (er war nicht im Backup)
+    guild.channels.cache.get(interactionChannelId)?.delete().catch(() => {});
   } catch (err) {
     console.error('[RESTORE FEHLER]', err);
     await interaction.editReply('âŒ Wiederherstellung fehlgeschlagen. PrÃ¼fe die Bot-Berechtigungen.');
