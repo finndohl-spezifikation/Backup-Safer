@@ -20,7 +20,7 @@ export async function handleSelectMenu(interaction) {
     }
     const selected = new Set(interaction.values);
     pendingBackupGuilds.delete(interaction.user.id);
-    await interaction.update({ content: '\u23F3 Backup lÃ¤uft...', components: [] });
+    await interaction.update({ content: 'â³ Backup lÃ¤uft...', components: [] });
     await doBackup(interaction, guild, selected);
     return;
   }
@@ -28,8 +28,8 @@ export async function handleSelectMenu(interaction) {
   // Backup-Auswahl beim Wiederherstellen
   if (interaction.customId === 'backup_select') {
     const backupId = interaction.values[0];
-    const backup   = await getBackup(backupId);
-    if (!backup) return interaction.update({ content: '\u274C Backup nicht gefunden.', components: [] });
+    const backup   = getBackup(backupId);
+    if (!backup) return interaction.update({ content: 'âŒ Backup nicht gefunden.', components: [] });
 
     pendingRestores.set(interaction.user.id, backupId);
 
@@ -45,10 +45,10 @@ export async function handleSelectMenu(interaction) {
 
     await interaction.update({
       content:
-        '\u26A0\uFE0F **Bist du sicher?**\n' +
+        'âš ï¸ **Bist du sicher?**\n' +
         'Backup: **' + backup.serverName + '**\n' +
         'Erstellt: ' + new Date(backup.createdAt).toLocaleString('de-DE') + '\n' +
-        '\uD83D\uDCC1 ' + backup.channels.length + ' KanÃ¤le  \uD83C\uDFAD ' + backup.roles.length + ' Rollen\n\n' +
+        'ðŸ“ ' + backup.channels.length + ' KanÃ¤le  ðŸŽ­ ' + backup.roles.length + ' Rollen\n\n' +
         '**Alle bestehenden KanÃ¤le und Rollen werden gelÃ¶scht und neu erstellt!**',
       components: [new ActionRowBuilder().addComponents(confirm, cancel)],
     });
@@ -60,22 +60,22 @@ export async function handleButton(interaction) {
 
   if (interaction.customId === 'restore_cancel') {
     pendingRestores.delete(interaction.user.id);
-    return interaction.update({ content: '\u274C Wiederherstellung abgebrochen.', components: [] });
+    return interaction.update({ content: 'âŒ Wiederherstellung abgebrochen.', components: [] });
   }
 
   if (interaction.customId !== 'restore_confirm') return;
 
   if (!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)) {
-    return interaction.reply({ content: '\u274C Du brauchst Admin-Rechte.', ephemeral: true });
+    return interaction.reply({ content: 'âŒ Du brauchst Admin-Rechte.', ephemeral: true });
   }
 
   const backupId = pendingRestores.get(interaction.user.id);
-  if (!backupId) return interaction.reply({ content: '\u274C Kein Backup ausgewÃ¤hlt.', ephemeral: true });
+  if (!backupId) return interaction.reply({ content: 'âŒ Kein Backup ausgewÃ¤hlt.', ephemeral: true });
 
-  const backup = await getBackup(backupId);
-  if (!backup) return interaction.reply({ content: '\u274C Backup nicht gefunden.', ephemeral: true });
+  const backup = getBackup(backupId);
+  if (!backup) return interaction.reply({ content: 'âŒ Backup nicht gefunden.', ephemeral: true });
 
-  await interaction.update({ content: '\u23F3 Backup wird wiederhergestellt...', components: [] });
+  await interaction.update({ content: 'â³ Backup wird wiederhergestellt...', components: [] });
 
   const guild = interaction.guild;
 
@@ -83,19 +83,19 @@ export async function handleButton(interaction) {
     await guild.setName(backup.serverName).catch(() => {});
     if (backup.serverIcon) await guild.setIcon(backup.serverIcon).catch(() => {});
 
-    await interaction.editReply('\u23F3 LÃ¶sche KanÃ¤le...');
+    await interaction.editReply('â³ LÃ¶sche KanÃ¤le...');
     for (const ch of guild.channels.cache.values()) {
       await ch.delete().catch(() => {});
     }
 
-    await interaction.editReply('\u23F3 LÃ¶sche Rollen...');
+    await interaction.editReply('â³ LÃ¶sche Rollen...');
     for (const role of guild.roles.cache.values()) {
       if (!role.managed && role.id !== guild.id) {
         await role.delete().catch(() => {});
       }
     }
 
-    await interaction.editReply('\u23F3 Erstelle Rollen...');
+    await interaction.editReply('â³ Erstelle Rollen...');
     const roleNameToId = new Map();
     for (const r of backup.roles) {
       try {
@@ -111,7 +111,7 @@ export async function handleButton(interaction) {
       } catch { /* Ã¼berspringen */ }
     }
 
-    await interaction.editReply('\u23F3 Erstelle KanÃ¤le...');
+    await interaction.editReply('â³ Erstelle KanÃ¤le...');
     const categoryNameToId = new Map();
 
     const categories = backup.channels.filter(c => c.type === ChannelType.GuildCategory);
@@ -158,14 +158,14 @@ export async function handleButton(interaction) {
 
     pendingRestores.delete(interaction.user.id);
     await interaction.editReply(
-      '\u2705 **Backup erfolgreich wiederhergestellt!**\n' +
-      '\uD83C\uDFF7\uFE0F Server: **' + backup.serverName + '**\n' +
-      '\uD83D\uDCC1 KanÃ¤le: **' + backup.channels.length + '**\n' +
-      '\uD83C\uDFAD Rollen: **' + backup.roles.length + '**'
+      'âœ… **Backup erfolgreich wiederhergestellt!**\n' +
+      'ðŸ·ï¸ Server: **' + backup.serverName + '**\n' +
+      'ðŸ“ KanÃ¤le: **' + backup.channels.length + '**\n' +
+      'ðŸŽ­ Rollen: **' + backup.roles.length + '**'
     );
   } catch (err) {
     console.error('[RESTORE FEHLER]', err);
-    await interaction.editReply('\u274C Wiederherstellung fehlgeschlagen. PrÃ¼fe die Bot-Berechtigungen.');
+    await interaction.editReply('âŒ Wiederherstellung fehlgeschlagen. PrÃ¼fe die Bot-Berechtigungen.');
   }
 }
 
@@ -199,4 +199,4 @@ function resolveRoleMentions(content, roleNameToId) {
     result = result.split('@' + name).join('<@&' + id + '>');
   }
   return result;
-}
+      }
