@@ -24,6 +24,13 @@ export function getBackup(id) {
   return loadAll()[id] ?? null;
 }
 
+export function deleteBackup(id) {
+  init();
+  const all = loadAll();
+  delete all[id];
+  fs.writeFileSync(FILE, JSON.stringify(all, null, 2), 'utf-8');
+}
+
 export function listBackups() {
   return Object.entries(loadAll()).map(([id, b]) => ({
     id,
