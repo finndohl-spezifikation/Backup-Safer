@@ -9,7 +9,7 @@ import {
 
 export const backupCommand = new SlashCommandBuilder()
   .setName('backup')
-  .setDescription('Erstellt ein vollstaendiges Backup dieses Servers')
+  .setDescription('Erstellt ein vollstÃ¤ndiges Backup dieses Servers')
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
   .toJSON();
 
@@ -35,8 +35,8 @@ export async function handleBackup(interaction) {
 
   const options = [
     new StringSelectMenuOptionBuilder()
-      .setLabel('Alle Kanaele')
-      .setDescription('Nachrichten aus ALLEN Textkanaelen sichern')
+      .setLabel('Alle KanÃ¤le')
+      .setDescription('Nachrichten aus ALLEN TextkanÃ¤len sichern')
       .setValue('__ALL__'),
     new StringSelectMenuOptionBuilder()
       .setLabel('Keine Nachrichten')
@@ -55,7 +55,7 @@ export async function handleBackup(interaction) {
 
   const select = new StringSelectMenuBuilder()
     .setCustomId('backup_channel_select')
-    .setPlaceholder('Kanaele auswaehlen...')
+    .setPlaceholder('KanÃ¤le auswÃ¤hlen...')
     .setMinValues(1)
     .setMaxValues(Math.min(options.length, 25))
     .addOptions(options);
@@ -63,7 +63,7 @@ export async function handleBackup(interaction) {
   pendingBackupGuilds.set(interaction.user.id, guild);
 
   await interaction.editReply({
-    content: '\u23F3 Aus welchen Kanaelen sollen Nachrichten gesichert werden?\nMehrere Kanaele moeglich.',
+    content: '\u23F3 Aus welchen KanÃ¤len sollen Nachrichten gesichert werden?\nMehrere KanÃ¤le mÃ¶glich.',
     components: [new ActionRowBuilder().addComponents(select)],
   });
 }
@@ -90,11 +90,11 @@ export async function doBackup(interaction, guild, selectedChannelIds) {
       });
     }
 
-    // Rollen-ID -> Name Map (fuer Mention-Ersatz)
+    // Rollen-ID -> Name Map (fÃ¼r Mention-Ersatz)
     const roleNameMap = {};
     guild.roles.cache.forEach(r => { roleNameMap[r.id] = r.name; });
 
-    // Kanaele
+    // KanÃ¤le
     const channels = [];
     for (const channel of guild.channels.cache
       .sort((a, b) => a.position - b.position)
@@ -165,7 +165,7 @@ export async function doBackup(interaction, guild, selectedChannelIds) {
     const backupId = guild.id + '-' + Date.now();
 
     const { saveBackup } = await import('./storage.js');
-    saveBackup(backupId, {
+    await saveBackup(backupId, {
       backupId,
       serverName: guild.name,
       serverIcon: iconURL,
@@ -180,12 +180,12 @@ export async function doBackup(interaction, guild, selectedChannelIds) {
     await interaction.editReply(
       '\u2705 **Backup erfolgreich erstellt!**\n' +
       '\uD83C\uDD94 ID: ' + backupId + '\n' +
-      '\uD83D\uDCC1 Kanaele: **' + channels.length + '**\n' +
+      '\uD83D\uDCC1 KanÃ¤le: **' + channels.length + '**\n' +
       '\uD83C\uDFAD Rollen: **' + roles.length + '**\n' +
       '\uD83D\uDCAC Nachrichten: **' + msgCount + '**'
     );
   } catch (err) {
     console.error('[BACKUP FEHLER]', err);
-    await interaction.editReply('\u274C Backup fehlgeschlagen. Pruefe die Bot-Berechtigungen.');
+    await interaction.editReply('\u274C Backup fehlgeschlagen. PrÃ¼fe die Bot-Berechtigungen.');
   }
 }
