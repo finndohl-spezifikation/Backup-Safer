@@ -15,14 +15,14 @@ export const listCommand = new SlashCommandBuilder()
 
 export async function handleList(interaction) {
   if (!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)) {
-    return interaction.reply({ content: '\u274C Du brauchst Admin-Rechte.', ephemeral: true });
+    return interaction.reply({ content: 'âŒ Du brauchst Admin-Rechte.', ephemeral: true });
   }
 
-  const backups = await listBackups();
+  const backups = listBackups();
 
   if (backups.length === 0) {
     return interaction.reply({
-      content: '\uD83D\uDCED Keine Backups vorhanden. Erstelle zuerst eines mit /backup.',
+      content: 'ðŸ“­ Keine Backups vorhanden. Erstelle zuerst eines mit /backup.',
       ephemeral: true,
     });
   }
@@ -46,8 +46,8 @@ export async function handleList(interaction) {
 
   await interaction.reply({
     content:
-      '\uD83D\uDCCB **WÃ¤hle ein Backup zum Laden aus:**\n' +
-      '\u26A0\uFE0F Alle bestehenden KanÃ¤le und Rollen werden Ã¼berschrieben!',
+      'ðŸ“‹ **WÃ¤hle ein Backup zum Laden aus:**\n' +
+      'âš ï¸ Alle bestehenden KanÃ¤le und Rollen werden Ã¼berschrieben!',
     components: [new ActionRowBuilder().addComponents(select)],
     ephemeral: true,
   });
