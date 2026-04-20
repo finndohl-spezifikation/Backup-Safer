@@ -9,15 +9,24 @@ const DATA_DIR = process.env.DATA_PATH ?? __dirname;
 const FILE = path.join(DATA_DIR, 'backups.json');
 
 function init() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  if (!fs.existsSync(FILE)) fs.writeFileSync(FILE, '{}', 'utf-8');
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    if (!fs.existsSync(FILE)) fs.writeFileSync(FILE, '{}', 'utf-8');
+  } catch (e) {
+    console.error('[storage] init fehlgeschlagen:', e.message);
+  }
 }
 
 export function saveBackup(id, data) {
-  init();
-  const all = loadAll();
-  all[id] = data;
-  fs.writeFileSync(FILE, JSON.stringify(all, null, 2), 'utf-8');
+  try {
+    init();
+    const all = loadAll();
+    all[id] = data;
+    fs.writeFileSync(FILE, JSON.stringify(all, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('[storage] saveBackup fehlgeschlagen:', e.message);
+    throw e;
+  }
 }
 
 export function getBackup(id) {
@@ -25,21 +34,31 @@ export function getBackup(id) {
 }
 
 export function deleteBackup(id) {
-  init();
-  const all = loadAll();
-  delete all[id];
-  fs.writeFileSync(FILE, JSON.stringify(all, null, 2), 'utf-8');
+  try {
+    init();
+    const all = loadAll();
+    delete all[id];
+    fs.writeFileSync(FILE, JSON.stringify(all, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('[storage] deleteBackup fehlgeschlagen:', e.message);
+    throw e;
+  }
 }
 
 export function listBackups() {
-  return Object.entries(loadAll()).map(([id, b]) => ({
-    id,
-    name:         b.serverName,
-    createdAt:    b.createdAt,
-    channelCount: b.channels?.length ?? 0,
-    roleCount:    b.roles?.length ?? 0,
-    msgCount:     b.channels?.reduce((s, c) => s + (c.messages?.length ?? 0), 0) ?? 0,
-  }));
+  try {
+    return Object.entries(loadAll()).map(([id, b]) => ({
+      id,
+      name:         b.serverName ?? null,
+      createdAt:    b.createdAt ?? null,
+      channelCount: b.channels?.length ?? 0,
+      roleCount:    b.roles?.length ?? 0,
+      msgCount:     b.channels?.reduce((s, c) => s + (c.messages?.length ?? 0), 0) ?? 0,
+    }));
+  } catch (e) {
+    console.error('[storage] listBackups fehlgeschlagen:', e.message);
+    return [];
+  }
 }
 
 function loadAll() {
