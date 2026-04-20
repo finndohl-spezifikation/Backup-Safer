@@ -18,7 +18,7 @@ export const pendingBackupGuilds = new Map();
 
 export async function handleBackup(interaction) {
   if (!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)) {
-    return interaction.reply({ content: '\u274C Du brauchst Admin-Rechte.', ephemeral: true });
+    return interaction.reply({ content: 'âŒ Du brauchst Admin-Rechte.', ephemeral: true });
   }
 
   await interaction.deferReply({ ephemeral: true });
@@ -63,13 +63,13 @@ export async function handleBackup(interaction) {
   pendingBackupGuilds.set(interaction.user.id, guild);
 
   await interaction.editReply({
-    content: '\u23F3 Aus welchen KanÃ¤len sollen Nachrichten gesichert werden?\nMehrere KanÃ¤le mÃ¶glich.',
+    content: 'â³ Aus welchen KanÃ¤len sollen Nachrichten gesichert werden?\nMehrere KanÃ¤le mÃ¶glich.',
     components: [new ActionRowBuilder().addComponents(select)],
   });
 }
 
 export async function doBackup(interaction, guild, selectedChannelIds) {
-  await interaction.editReply({ content: '\u23F3 Backup wird erstellt...', components: [] });
+  await interaction.editReply({ content: 'â³ Backup wird erstellt...', components: [] });
 
   try {
     // Rollen
@@ -165,7 +165,7 @@ export async function doBackup(interaction, guild, selectedChannelIds) {
     const backupId = guild.id + '-' + Date.now();
 
     const { saveBackup } = await import('./storage.js');
-    await saveBackup(backupId, {
+    saveBackup(backupId, {
       backupId,
       serverName: guild.name,
       serverIcon: iconURL,
@@ -178,14 +178,14 @@ export async function doBackup(interaction, guild, selectedChannelIds) {
 
     const msgCount = channels.reduce((s, c) => s + c.messages.length, 0);
     await interaction.editReply(
-      '\u2705 **Backup erfolgreich erstellt!**\n' +
-      '\uD83C\uDD94 ID: ' + backupId + '\n' +
-      '\uD83D\uDCC1 KanÃ¤le: **' + channels.length + '**\n' +
-      '\uD83C\uDFAD Rollen: **' + roles.length + '**\n' +
-      '\uD83D\uDCAC Nachrichten: **' + msgCount + '**'
+      'âœ… **Backup erfolgreich erstellt!**\n' +
+      'ðŸ†” ID: ' + backupId + '\n' +
+      'ðŸ“ KanÃ¤le: **' + channels.length + '**\n' +
+      'ðŸŽ­ Rollen: **' + roles.length + '**\n' +
+      'ðŸ’¬ Nachrichten: **' + msgCount + '**'
     );
   } catch (err) {
     console.error('[BACKUP FEHLER]', err);
-    await interaction.editReply('\u274C Backup fehlgeschlagen. PrÃ¼fe die Bot-Berechtigungen.');
+    await interaction.editReply('âŒ Backup fehlgeschlagen. PrÃ¼fe die Bot-Berechtigungen.');
   }
 }
