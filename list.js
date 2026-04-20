@@ -9,7 +9,7 @@ import { listBackups } from './storage.js';
 
 export const listCommand = new SlashCommandBuilder()
   .setName('list')
-  .setDescription('Zeigt alle Backups an und laesst dich eines laden')
+  .setDescription('Zeigt alle Backups an und lÃ¤sst dich eines laden')
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
   .toJSON();
 
@@ -18,7 +18,7 @@ export async function handleList(interaction) {
     return interaction.reply({ content: '\u274C Du brauchst Admin-Rechte.', ephemeral: true });
   }
 
-  const backups = listBackups();
+  const backups = await listBackups();
 
   if (backups.length === 0) {
     return interaction.reply({
@@ -32,7 +32,7 @@ export async function handleList(interaction) {
       .setLabel(b.name.slice(0, 100))
       .setDescription(
         new Date(b.createdAt).toLocaleString('de-DE') +
-        ' | ' + b.channelCount + ' Kanaele | ' +
+        ' | ' + b.channelCount + ' KanÃ¤le | ' +
         b.roleCount + ' Rollen | ' +
         b.msgCount + ' Nachrichten'
       )
@@ -41,13 +41,13 @@ export async function handleList(interaction) {
 
   const select = new StringSelectMenuBuilder()
     .setCustomId('backup_select')
-    .setPlaceholder('Backup auswaehlen...')
+    .setPlaceholder('Backup auswÃ¤hlen...')
     .addOptions(options);
 
   await interaction.reply({
     content:
-      '\uD83D\uDCCB **Waehle ein Backup zum Laden aus:**\n' +
-      '\u26A0\uFE0F Alle bestehenden Kanaele und Rollen werden ueberschrieben!',
+      '\uD83D\uDCCB **WÃ¤hle ein Backup zum Laden aus:**\n' +
+      '\u26A0\uFE0F Alle bestehenden KanÃ¤le und Rollen werden Ã¼berschrieben!',
     components: [new ActionRowBuilder().addComponents(select)],
     ephemeral: true,
   });
