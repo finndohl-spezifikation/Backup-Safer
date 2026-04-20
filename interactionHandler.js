@@ -16,11 +16,11 @@ export async function handleSelectMenu(interaction) {
   if (interaction.customId === 'backup_channel_select') {
     const guild = pendingBackupGuilds.get(interaction.user.id);
     if (!guild) {
-      return interaction.update({ content: 'Sitzung abgelaufen. Bitte /backup erneut ausfuehren.', components: [] });
+      return interaction.update({ content: 'Sitzung abgelaufen. Bitte /backup erneut ausfÃ¼hren.', components: [] });
     }
     const selected = new Set(interaction.values);
     pendingBackupGuilds.delete(interaction.user.id);
-    await interaction.update({ content: '\u23F3 Backup laeuft...', components: [] });
+    await interaction.update({ content: '\u23F3 Backup lÃ¤uft...', components: [] });
     await doBackup(interaction, guild, selected);
     return;
   }
@@ -28,7 +28,7 @@ export async function handleSelectMenu(interaction) {
   // Backup-Auswahl beim Wiederherstellen
   if (interaction.customId === 'backup_select') {
     const backupId = interaction.values[0];
-    const backup   = getBackup(backupId);
+    const backup   = await getBackup(backupId);
     if (!backup) return interaction.update({ content: '\u274C Backup nicht gefunden.', components: [] });
 
     pendingRestores.set(interaction.user.id, backupId);
@@ -48,8 +48,8 @@ export async function handleSelectMenu(interaction) {
         '\u26A0\uFE0F **Bist du sicher?**\n' +
         'Backup: **' + backup.serverName + '**\n' +
         'Erstellt: ' + new Date(backup.createdAt).toLocaleString('de-DE') + '\n' +
-        '\uD83D\uDCC1 ' + backup.channels.length + ' Kanaele  \uD83C\uDFAD ' + backup.roles.length + ' Rollen\n\n' +
-        '**Alle bestehenden Kanaele und Rollen werden geloescht und neu erstellt!**',
+        '\uD83D\uDCC1 ' + backup.channels.length + ' KanÃ¤le  \uD83C\uDFAD ' + backup.roles.length + ' Rollen\n\n' +
+        '**Alle bestehenden KanÃ¤le und Rollen werden gelÃ¶scht und neu erstellt!**',
       components: [new ActionRowBuilder().addComponents(confirm, cancel)],
     });
     return;
@@ -70,9 +70,9 @@ export async function handleButton(interaction) {
   }
 
   const backupId = pendingRestores.get(interaction.user.id);
-  if (!backupId) return interaction.reply({ content: '\u274C Kein Backup ausgewaehlt.', ephemeral: true });
+  if (!backupId) return interaction.reply({ content: '\u274C Kein Backup ausgewÃ¤hlt.', ephemeral: true });
 
-  const backup = getBackup(backupId);
+  const backup = await getBackup(backupId);
   if (!backup) return interaction.reply({ content: '\u274C Backup nicht gefunden.', ephemeral: true });
 
   await interaction.update({ content: '\u23F3 Backup wird wiederhergestellt...', components: [] });
@@ -83,12 +83,12 @@ export async function handleButton(interaction) {
     await guild.setName(backup.serverName).catch(() => {});
     if (backup.serverIcon) await guild.setIcon(backup.serverIcon).catch(() => {});
 
-    await interaction.editReply('\u23F3 Loesche Kanaele...');
+    await interaction.editReply('\u23F3 LÃ¶sche KanÃ¤le...');
     for (const ch of guild.channels.cache.values()) {
       await ch.delete().catch(() => {});
     }
 
-    await interaction.editReply('\u23F3 Loesche Rollen...');
+    await interaction.editReply('\u23F3 LÃ¶sche Rollen...');
     for (const role of guild.roles.cache.values()) {
       if (!role.managed && role.id !== guild.id) {
         await role.delete().catch(() => {});
@@ -108,10 +108,10 @@ export async function handleButton(interaction) {
           position:    r.position,
         });
         roleNameToId.set(r.name, newRole.id);
-      } catch { /* ueberspringen */ }
+      } catch { /* Ã¼berspringen */ }
     }
 
-    await interaction.editReply('\u23F3 Erstelle Kanaele...');
+    await interaction.editReply('\u23F3 Erstelle KanÃ¤le...');
     const categoryNameToId = new Map();
 
     const categories = backup.channels.filter(c => c.type === ChannelType.GuildCategory);
@@ -123,7 +123,7 @@ export async function handleButton(interaction) {
           permissionOverwrites: resolveOverwrites(cat.overwrites, guild, roleNameToId, backup.roles),
         });
         categoryNameToId.set(cat.name, newCat.id);
-      } catch { /* ueberspringen */ }
+      } catch { /* Ã¼berspringen */ }
     }
 
     const others = backup.channels.filter(c => c.type !== ChannelType.GuildCategory);
@@ -153,19 +153,19 @@ export async function handleButton(interaction) {
             }).catch(() => {});
           }
         }
-      } catch { /* ueberspringen */ }
+      } catch { /* Ã¼berspringen */ }
     }
 
     pendingRestores.delete(interaction.user.id);
     await interaction.editReply(
       '\u2705 **Backup erfolgreich wiederhergestellt!**\n' +
       '\uD83C\uDFF7\uFE0F Server: **' + backup.serverName + '**\n' +
-      '\uD83D\uDCC1 Kanaele: **' + backup.channels.length + '**\n' +
+      '\uD83D\uDCC1 KanÃ¤le: **' + backup.channels.length + '**\n' +
       '\uD83C\uDFAD Rollen: **' + backup.roles.length + '**'
     );
   } catch (err) {
     console.error('[RESTORE FEHLER]', err);
-    await interaction.editReply('\u274C Wiederherstellung fehlgeschlagen. Pruefe die Bot-Berechtigungen.');
+    await interaction.editReply('\u274C Wiederherstellung fehlgeschlagen. PrÃ¼fe die Bot-Berechtigungen.');
   }
 }
 
