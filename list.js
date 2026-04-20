@@ -9,7 +9,7 @@ import { listBackups } from './storage.js';
 
 export const listCommand = new SlashCommandBuilder()
   .setName('list')
-  .setDescription('Zeigt alle Backups an und lÃ¤sst dich eines laden')
+  .setDescription('Zeigt alle Backups an â€“ laden oder lÃ¶schen')
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
   .toJSON();
 
