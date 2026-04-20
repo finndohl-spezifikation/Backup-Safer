@@ -27,17 +27,15 @@ export async function handleList(interaction) {
     });
   }
 
-  const options = backups.slice(0, 25).map(b =>
-    new StringSelectMenuOptionBuilder()
-      .setLabel(b.name.slice(0, 100))
-      .setDescription(
-        new Date(b.createdAt).toLocaleString('de-DE') +
-        ' | ' + b.channelCount + ' KanÃ¤le | ' +
-        b.roleCount + ' Rollen | ' +
-        b.msgCount + ' Nachrichten'
-      )
-      .setValue(b.id)
-  );
+  const options = backups.slice(0, 25).map(b => {
+    const label = (b.name ?? 'Backup ' + b.id).slice(0, 100);
+    const date  = b.createdAt ? new Date(b.createdAt).toLocaleString('de-DE') : '?';
+    const desc  = (date + ' | ' + b.channelCount + ' KanÃ¤le | ' + b.roleCount + ' Rollen | ' + b.msgCount + ' Nachrichten').slice(0, 100);
+    return new StringSelectMenuOptionBuilder()
+      .setLabel(label)
+      .setDescription(desc)
+      .setValue(b.id);
+  });
 
   const select = new StringSelectMenuBuilder()
     .setCustomId('backup_select')
