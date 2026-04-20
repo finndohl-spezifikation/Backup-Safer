@@ -199,4 +199,4 @@ function resolveRoleMentions(content, roleNameToId) {
     result = result.split('@' + name).join('<@&' + id + '>');
   }
   return result;
-      }
+}
