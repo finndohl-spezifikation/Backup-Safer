@@ -17,11 +17,11 @@ export async function handleSelectMenu(interaction) {
   if (interaction.customId === 'backup_channel_select') {
     const guild = pendingBackupGuilds.get(interaction.user.id);
     if (!guild) {
-      return interaction.update({ content: 'Sitzung abgelaufen. Bitte /backup erneut ausfÃ¼hren.', components: [] });
+      return interaction.update({ content: 'Sitzung abgelaufen. Bitte /backup erneut ausf\u{FC}hren.', components: [] });
     }
     const selected = new Set(interaction.values);
     pendingBackupGuilds.delete(interaction.user.id);
-    await interaction.update({ content: 'â³ Backup lÃ¤uft...', components: [] });
+    await interaction.update({ content: '\u{23F3} Backup l\u{E4}uft...', components: [] });
     await doBackup(interaction, guild, selected);
     return;
   }
@@ -30,7 +30,7 @@ export async function handleSelectMenu(interaction) {
   if (interaction.customId === 'backup_select') {
     const backupId = interaction.values[0];
     const backup   = getBackup(backupId);
-    if (!backup) return interaction.update({ content: 'âŒ Backup nicht gefunden.', components: [] });
+    if (!backup) return interaction.update({ content: '\u{274C} Backup nicht gefunden.', components: [] });
 
     pendingRestores.set(interaction.user.id, backupId);
     pendingDeletes.set(interaction.user.id, backupId);
@@ -42,7 +42,7 @@ export async function handleSelectMenu(interaction) {
 
     const del = new ButtonBuilder()
       .setCustomId('backup_delete')
-      .setLabel('LÃ¶schen')
+      .setLabel('L\u{F6}schen')
       .setStyle(ButtonStyle.Secondary);
 
     const cancel = new ButtonBuilder()
@@ -52,10 +52,10 @@ export async function handleSelectMenu(interaction) {
 
     await interaction.update({
       content:
-        'âš ï¸ **Was mÃ¶chtest du tun?**\n' +
+        '\u{26A0}\u{FE0F} **Was m\u{F6}chtest du tun?**\n' +
         'Backup: **' + (backup.serverName ?? backupId) + '**\n' +
         'Erstellt: ' + (backup.createdAt ? new Date(backup.createdAt).toLocaleString('de-DE') : '?') + '\n' +
-        'ðŸ“ ' + backup.channels.length + ' KanÃ¤le  ðŸŽ­ ' + backup.roles.length + ' Rollen',
+        '\u{1F4C1} ' + backup.channels.length + ' Kan\u{E4}le  \u{1F3AD} ' + backup.roles.length + ' Rollen',
       components: [new ActionRowBuilder().addComponents(restore, del, cancel)],
     });
     return;
@@ -64,21 +64,21 @@ export async function handleSelectMenu(interaction) {
 
 export async function handleButton(interaction) {
 
-  // â”€â”€ Abbrechen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // \u{2500}\u{2500} Abbrechen \u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}
   if (interaction.customId === 'restore_cancel') {
     pendingRestores.delete(interaction.user.id);
     pendingDeletes.delete(interaction.user.id);
-    return interaction.update({ content: 'âŒ Abgebrochen.', components: [] });
+    return interaction.update({ content: '\u{274C} Abgebrochen.', components: [] });
   }
 
-  // â”€â”€ Backup loeschen: Sicherheitsabfrage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // \u{2500}\u{2500} Backup loeschen: Sicherheitsabfrage \u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}
   if (interaction.customId === 'backup_delete') {
     const backupId = pendingDeletes.get(interaction.user.id);
-    if (!backupId) return interaction.update({ content: 'âŒ Kein Backup ausgewÃ¤hlt.', components: [] });
+    if (!backupId) return interaction.update({ content: '\u{274C} Kein Backup ausgew\u{E4}hlt.', components: [] });
     const backup = getBackup(backupId);
     const confirmDel = new ButtonBuilder()
       .setCustomId('delete_confirm')
-      .setLabel('Ja, endgÃ¼ltig lÃ¶schen')
+      .setLabel('Ja, endg\u{FC}ltig l\u{F6}schen')
       .setStyle(ButtonStyle.Danger);
     const cancelDel = new ButtonBuilder()
       .setCustomId('restore_cancel')
@@ -86,62 +86,69 @@ export async function handleButton(interaction) {
       .setStyle(ButtonStyle.Secondary);
     await interaction.update({
       content:
-        'âš ï¸ **Backup wirklich lÃ¶schen?**\n' +
+        '\u{26A0}\u{FE0F} **Backup wirklich l\u{F6}schen?**\n' +
         'Backup: **' + (backup?.serverName ?? backupId) + '**\n' +
-        'Diese Aktion kann nicht rÃ¼ckgÃ¤ngig gemacht werden!',
+        'Diese Aktion kann nicht r\u{FC}ckg\u{E4}ngig gemacht werden!',
       components: [new ActionRowBuilder().addComponents(confirmDel, cancelDel)],
     });
     return;
   }
 
-  // â”€â”€ Backup loeschen: Bestaetigt â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // \u{2500}\u{2500} Backup loeschen: Bestaetigt \u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}
   if (interaction.customId === 'delete_confirm') {
     const backupId = pendingDeletes.get(interaction.user.id);
-    if (!backupId) return interaction.update({ content: 'âŒ Kein Backup ausgewÃ¤hlt.', components: [] });
+    if (!backupId) return interaction.update({ content: '\u{274C} Kein Backup ausgew\u{E4}hlt.', components: [] });
     pendingDeletes.delete(interaction.user.id);
     pendingRestores.delete(interaction.user.id);
     deleteBackup(backupId);
-    return interaction.update({ content: 'âœ… Backup wurde gelÃ¶scht.', components: [] });
+    return interaction.update({ content: '\u{2705} Backup wurde gel\u{F6}scht.', components: [] });
   }
 
   if (interaction.customId !== 'restore_confirm') return;
 
   if (!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)) {
-    return interaction.reply({ content: 'âŒ Du brauchst Admin-Rechte.', ephemeral: true });
+    return interaction.reply({ content: '\u{274C} Du brauchst Admin-Rechte.', ephemeral: true });
   }
 
   const backupId = pendingRestores.get(interaction.user.id);
-  if (!backupId) return interaction.reply({ content: 'âŒ Kein Backup ausgewÃ¤hlt.', ephemeral: true });
+  if (!backupId) return interaction.reply({ content: '\u{274C} Kein Backup ausgew\u{E4}hlt.', ephemeral: true });
 
   const backup = getBackup(backupId);
-  if (!backup) return interaction.reply({ content: 'âŒ Backup nicht gefunden.', ephemeral: true });
+  if (!backup) return interaction.reply({ content: '\u{274C} Backup nicht gefunden.', ephemeral: true });
 
-  await interaction.update({ content: 'â³ Backup wird wiederhergestellt...', components: [] });
+  await interaction.update({ content: '\u{23F3} Backup wird wiederhergestellt...', components: [] });
 
   const guild = interaction.guild;
-  // Den Kanal der Interaktion NICHT sofort lÃ¶schen â€“ sonst schlagen alle editReply fehl
+  // Den Kanal der Interaktion NICHT sofort l\u{F6}schen \u{2013} sonst schlagen alle editReply fehl
   const interactionChannelId = interaction.channelId;
 
   try {
     await guild.setName(backup.serverName).catch(() => {});
     if (backup.serverIcon) await guild.setIcon(backup.serverIcon).catch(() => {});
 
-    await interaction.editReply('â³ LÃ¶sche KanÃ¤le...');
+    await interaction.editReply('\u{23F3} L\u{F6}sche Kan\u{E4}le...');
     for (const ch of guild.channels.cache.values()) {
-      if (ch.id === interactionChannelId) continue; // zuletzt lÃ¶schen
+      if (ch.id === interactionChannelId) continue; // zuletzt l\u{F6}schen
       await ch.delete().catch(() => {});
     }
 
-    await interaction.editReply('â³ LÃ¶sche Rollen...');
+    await interaction.editReply('\u{23F3} L\u{F6}sche Rollen...');
     for (const role of guild.roles.cache.values()) {
       if (!role.managed && role.id !== guild.id) {
         await role.delete().catch(() => {});
       }
     }
 
-    await interaction.editReply('â³ Erstelle Rollen...');
+    // @everyone-Berechtigungen wiederherstellen
+    if (backup.everyonePermissions) {
+      await guild.roles.everyone.setPermissions(BigInt(backup.everyonePermissions)).catch(() => {});
+    }
+
+    await interaction.editReply('\u{23F3} Erstelle Rollen...');
     const roleNameToId = new Map();
-    for (const r of backup.roles) {
+    // Aufsteigend nach Position erstellen (niedrigste zuerst)
+    const sortedRoles = [...backup.roles].sort((a, b) => a.position - b.position);
+    for (const r of sortedRoles) {
       try {
         const newRole = await guild.roles.create({
           name:        r.name,
@@ -149,35 +156,49 @@ export async function handleButton(interaction) {
           hoist:       r.hoist,
           mentionable: r.mentionable,
           permissions: BigInt(r.permissions),
-          position:    r.position,
         });
         roleNameToId.set(r.name, newRole.id);
-      } catch { /* Ã¼berspringen */ }
+      } catch { /* \u{FC}berspringen */ }
     }
 
-    await interaction.editReply('â³ Erstelle KanÃ¤le...');
+    // Rollen-Reihenfolge exakt erzwingen
+    await interaction.editReply('\u{23F3} Setze Rollen-Reihenfolge...');
+    const positionUpdates = [];
+    for (const r of sortedRoles) {
+      const newId = roleNameToId.get(r.name);
+      if (newId) positionUpdates.push({ role: newId, position: r.position });
+    }
+    if (positionUpdates.length > 0) {
+      await guild.roles.setPositions(positionUpdates).catch(e => console.error('[RESTORE] setPositions:', e.message));
+    }
+
+    await interaction.editReply('\u{23F3} Erstelle Kan\u{E4}le...');
     const categoryNameToId = new Map();
+    const categoryIdToNewId = new Map();
 
     const categories = backup.channels.filter(c => c.type === ChannelType.GuildCategory);
     for (const cat of categories.sort((a, b) => a.position - b.position)) {
       try {
         const newCat = await guild.channels.create({
-          name: cat.name,
-          type: ChannelType.GuildCategory,
+          name:     cat.name,
+          type:     ChannelType.GuildCategory,
+          position: cat.position,
           permissionOverwrites: resolveOverwrites(cat.overwrites, guild, roleNameToId, backup.roles),
         });
         categoryNameToId.set(cat.name, newCat.id);
-      } catch { /* Ã¼berspringen */ }
+        categoryIdToNewId.set(cat.id, newCat.id);
+      } catch { /* \u{FC}berspringen */ }
     }
 
     const others = backup.channels.filter(c => c.type !== ChannelType.GuildCategory);
     for (const ch of others.sort((a, b) => a.position - b.position)) {
       try {
         const opts = {
-          name:  ch.name,
-          type:  ch.type,
-          topic: ch.topic ?? undefined,
-          nsfw:  ch.nsfw ?? false,
+          name:     ch.name,
+          type:     ch.type,
+          position: ch.position,
+          topic:    ch.topic ?? undefined,
+          nsfw:     ch.nsfw ?? false,
           permissionOverwrites: resolveOverwrites(ch.overwrites, guild, roleNameToId, backup.roles),
         };
         if (ch.parentName && categoryNameToId.has(ch.parentName)) opts.parent = categoryNameToId.get(ch.parentName);
@@ -197,21 +218,21 @@ export async function handleButton(interaction) {
             }).catch(() => {});
           }
         }
-      } catch { /* Ã¼berspringen */ }
+      } catch { /* \u{FC}berspringen */ }
     }
 
     pendingRestores.delete(interaction.user.id);
     await interaction.editReply(
-      'âœ… **Backup erfolgreich wiederhergestellt!**\n' +
-      'ðŸ·ï¸ Server: **' + backup.serverName + '**\n' +
-      'ðŸ“ KanÃ¤le: **' + backup.channels.length + '**\n' +
-      'ðŸŽ­ Rollen: **' + backup.roles.length + '**'
+      '\u{2705} **Backup erfolgreich wiederhergestellt!**\n' +
+      '\u{1F3F7}\u{FE0F} Server: **' + backup.serverName + '**\n' +
+      '\u{1F4C1} Kan\u{E4}le: **' + backup.channels.length + '**\n' +
+      '\u{1F3AD} Rollen: **' + backup.roles.length + '**'
     );
-    // Jetzt den Interaktions-Kanal lÃ¶schen (er war nicht im Backup)
+    // Jetzt den Interaktions-Kanal l\u{F6}schen (er war nicht im Backup)
     guild.channels.cache.get(interactionChannelId)?.delete().catch(() => {});
   } catch (err) {
     console.error('[RESTORE FEHLER]', err);
-    await interaction.editReply('âŒ Wiederherstellung fehlgeschlagen. PrÃ¼fe die Bot-Berechtigungen.');
+    await interaction.editReply('\u{274C} Wiederherstellung fehlgeschlagen. Pr\u{FC}fe die Bot-Berechtigungen.');
   }
 }
 
@@ -245,4 +266,4 @@ function resolveRoleMentions(content, roleNameToId) {
     result = result.split('@' + name).join('<@&' + id + '>');
   }
   return result;
-        }
+}
