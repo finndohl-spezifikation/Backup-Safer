@@ -1,0 +1,54 @@
+import {
+  SlashCommandBuilder,
+  PermissionFlagsBits,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
+  ActionRowBuilder,
+} from 'discord.js';
+import { listBackups } from './storage.js';
+
+export const listCommand = new SlashCommandBuilder()
+  .setName('list')
+  .setDescription('Zeigt alle Backups an und laesst dich eines laden')
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .toJSON();
+
+export async function handleList(interaction) {
+  if (!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)) {
+    return interaction.reply({ content: 'âŒ Du brauchst Admin-Rechte.', ephemeral: true });
+  }
+
+  const backups = listBackups();
+
+  if (backups.length === 0) {
+    return interaction.reply({
+      content: 'ðŸ“­ Keine Backups vorhanden. Erstelle zuerst eines mit /backup.',
+      ephemeral: true,
+    });
+  }
+
+  const options = backups.slice(0, 25).map(b =>
+    new StringSelectMenuOptionBuilder()
+      .setLabel(b.name.slice(0, 100))
+      .setDescription(
+        new Date(b.createdAt).toLocaleString('de-DE') +
+        ' | ' + b.channelCount + ' Kanaele | ' +
+        b.roleCount + ' Rollen | ' +
+        b.msgCount + ' Nachrichten'
+      )
+      .setValue(b.id)
+  );
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId('backup_select')
+    .setPlaceholder('Backup auswaehlen...')
+    .addOptions(options);
+
+  const row = new ActionRowBuilder().addComponents(select);
+
+  await interaction.reply({
+    content: 'ðŸ“‹ **Waehle ein Backup zum Laden aus:**\nâš ï¸ Alle bestehenden Kanaele und Rollen werden ueberschrieben!',
+    components: [row],
+    ephemeral: true,
+  });
+}
